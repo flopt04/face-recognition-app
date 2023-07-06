@@ -2,8 +2,10 @@ import './App.css';
 import Logo from './components/Navigation/Logo/Logo';
 import Navigation from './components/Navigation/Navigation';
 import ImageLinkForm from './components/ImageLinkForm/ImageLinkForm';
-import FaceRecgonition from './components/FaceRecognition/FaceRecognition';
+import FaceRecognition from './components/FaceRecognition/FaceRecognition';
 import Rank from './components/Rank/Rank';
+import Signin from './components/Signin/Signin';
+import Register from './components/Register/Register';
 import { Component } from 'react';
 
 
@@ -53,6 +55,8 @@ class App extends Component {
       input: '',
       imageUrl: '',
       box: {},
+      route: 'home',
+      isSignedIn: false
     }
   }
 calculateFaceLocation=(data)=>{
@@ -60,7 +64,16 @@ calculateFaceLocation=(data)=>{
   const image = document.getElementById('inputimage');
   const width = Number(image.width);
   const height = Number(image.height);
+  return {
+    leftCol: clarifaiFace.left_col * width,
+    topRow: clarifaiFace.top_row * height,
+    rightCol: width - (clarifaiFace.right_col * width),
+    bottomRow: height - (clarifaiFace.bottom_row * height)
+  }
+}
 
+displayFaceBox = (box) =>{
+this.setState({box:box})
 }
   onInputChange = (event)=>{
     this.setState({input: event.target.value});
@@ -69,8 +82,9 @@ calculateFaceLocation=(data)=>{
   onButtonSubmit =() =>{
 this.setState({imageUrl: this.state.input});
 
-    app.models.predict('face-detection', this.state.input)
-.then(response => {
+fetch("https://api.clarifai.com/v2/models/" + 'face-detection' +  "/outputs", returnClarifaiRequestOptions)
+.then(response => response.json())
+  .then(response => {
   console.log('hi', response)
   if (response) {
     fetch('http://localhost:3000/image', {
@@ -85,24 +99,45 @@ this.setState({imageUrl: this.state.input});
         this.setState(Object.assign(this.state.user, { entries: count}))
       })
 
-  }
-  this.displayFaceBox(this.calculateFaceLocation(response))
+   }
+   this.displayFaceBox(this.calculateFaceLocation(response))
 })
 .catch(err => console.log(err));
   }
 
+  onRouteChange = (route)=>{
+    if(route === 'signout'){
+      this.setState({isSignedIn: false});
+    }else if(route ==='home'){
+      this.setState({isSignedIn:true});
+    }
+    this.setState({route: route});
+
+  }
+
   render(){
+    const { isSignedIn, imageUrl, route, box } = this.state;
     return (
       <div className="App">
-       <Navigation/>
+       <Navigation isSignedIn={isSignedIn} onRouteChange={this.onRouteChange}/>
+       { this.state.route === 'home' 
+       ?<div>
        <Logo/>
        <Rank/>
        <ImageLinkForm onInputChange={this.onInputChange} onButtonSubmit={this.onButtonSubmit}/>
-       <FaceRecgonition imageUrl={this.state.imageUrl}/>
+       <FaceRecognition box={box} imageUrl={imageUrl}/>
+       </div>
+       
+       :(
+       route === 'signin' ?
+        <Signin onRouteChange={this.onRouteChange}/>
+        : <Register onRouteChange={this.onRouteChange}/>
+       )
+
+       }
       </div>
     );
   }
- 
 }
 
 export default App;
